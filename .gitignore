@@ -1,0 +1,60 @@
+# Python environments
+.venv/
+env/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs and Data (Optional: keeping CSV so dataset is included on GitHub)
+*.log
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Node build and dependencies
+node_modules/
+dist/
+dist-ssr/
+.env*
+.env.*.local
+
+task3_data/
+
+task4_data/
+
+# Generated Windows packages (publish these as GitHub Release assets)
+/build/
+/release/
+*.egg-info/
+
+# Local credentials, keys and editor state
+.aws/
+.agents/
+.codex/
+.claude/
+.idea/
+.vscode/
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Local project notes and original brief (kept on disk)
+/CLAUDE.md
+/NEXT_STEPS.md
+/DATASETS_STATUS.md
+/Drone oversight.docx
+
+# Generated image previews and separately managed image datasets
+/seki_debug_metrics.json
+/seki_southfork_mosaic.png
+/seki_southfork_mosaic_export.zip
+/task3_output/
+/sample-dji-drone-dataset/
