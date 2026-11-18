@@ -6,20 +6,51 @@ The integrated version uses the tested image pipeline from GitHub `main`, with
 local map-loading, upload, security and packaging fixes. See [REVIEW.md](REVIEW.md)
 for verification results and the remaining limits of real-world validation.
 
-## Run
+## Quick start
 
-Windows: double-click **RUN.bat** (developer mode: opens http://localhost:5173). On first run it creates `.venv`, installs the
-Python and npm packages and starts the API with auto-reload plus the Vite UI.
+**Prerequisites:** Python 3.11+, Node.js 22.12+ (or 20.19+), and an internet connection
+for the map tiles.
 
-Any platform (Python 3.11+, Node.js 22.12+ / 20.19+):
+**Windows:** double-click **RUN.bat**.
 
-```powershell
+1. First run only (a few minutes): it creates `.venv`, installs the Python and npm
+   packages.
+2. It starts the API (http://localhost:8000) and the UI, and opens
+   **http://localhost:5173** in your browser.
+3. To stop, close the console window (or press Ctrl+C in it).
+
+**Any other platform:**
+
+```bash
 python -m venv .venv
-.\.venv\Scripts\Activate.ps1      # macOS/Linux: source .venv/bin/activate
+source .venv/bin/activate          # Windows PowerShell: .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
-python run.py            # app mode: one port (8000), opens the browser
-python run.py --dev      # developer mode: API auto-reload + Vite on :5173
+npm ci
+python run.py --dev                # API + UI, open http://localhost:5173
 ```
+
+Launcher modes (`run.py`):
+
+| Command | What it does |
+|---|---|
+| `python run.py --dev` | API with auto-reload + Vite dev server (UI on :5173). What `RUN.bat` uses. |
+| `python run.py` | App mode: builds the UI if needed and serves everything from http://localhost:8000. |
+| `python run.py --api` | Backend only (used internally by `npm start`). |
+| add `--no-browser` | Do not open a browser window. |
+
+## Using the dashboard
+
+1. **Telemetry missions:** the bundled sample (`Drone_Forensics_Dataset.csv`) loads on start.
+   Pick a mission in the header to see its flight path, camera footprints and coverage
+   heatmap. *Upload CSV* replaces the data with your own CSV (columns `Mission_ID`,
+   `Latitude`, `Longitude`, `Altitude_m`, optional `Heading`) or a DJI `.srt` file.
+2. **Mission planning:** draw a polygon on the map; the planner returns a lawnmower flight
+   path. Choose a drone to get a feasibility check (flight time vs. battery). Areas that would
+   need more than 50,000 waypoints are rejected with a hint to shrink the area or raise the altitude.
+3. **Image missions (mosaic):** in the sidebar, upload geotagged JPGs (GPS EXIF required).
+   The mosaic renders in the background; a progress bar with a Cancel button shows the stage.
+   *Re-render* recomputes it, *Download Export* gives a ZIP (PNG + georeference files).
+4. **Projection:** click the preview (or enter X,Y) to convert pixels to GPS and back.
 
 ## Project layout
 
@@ -39,6 +70,17 @@ dashboard/             React + Vite UI
 Resource limits (see `backend/config.py`): CSV/SRT upload 50 MB, 2000 images / 2 GB per
 image upload, 256 MB preview cache, 250k heatmap cells, 40 MP mosaic canvas
 (larger canvases are coarsened and reported as `canvas_downscaled`).
+
+## Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| `Python not found` / `Node.js not found` in RUN.bat | Install them and make sure they are on PATH (new console window). |
+| Port 8000 or 5173 already in use | Close the previous run (its console window) or the other program using the port. |
+| UI loads but shows no data / 502 | The API is still starting (first start imports heavy libraries); wait ~10 s and reload. |
+| Map is grey | No internet access: basemap tiles are loaded online. |
+| First run seems stuck | `pip install` / `npm ci` are downloading; watch the console. |
+| Upload rejected | CSV/SRT max 50 MB; image uploads max 2000 files / 2 GB. |
 
 ## Standalone Windows build
 
@@ -81,6 +123,16 @@ Example heatmap response:
   ]
 }
 ```
+
+### Background render jobs
+
+Heavy mosaic renders run as jobs (one at a time) so the API stays responsive.
+
+- `POST /jobs` with `{"kind": "preview" | "preview_grouped" | "export", "mission_id": "...", "params": {"scale": 0.12}}`
+  returns `{job_id, status, progress, stage}`
+- `GET /jobs/{job_id}` — status (`queued|running|done|error|cancelled`), `progress` 0..1, `stage`
+- `GET /jobs/{job_id}/result` — the PNG (preview) or ZIP (export) once `done`
+- `DELETE /jobs/{job_id}` — cancel
 
 ### Mission Planner
 
@@ -162,7 +214,7 @@ npm test
 - The dashboard uses an in-memory backend store. A valid telemetry upload replaces the current mission dataset for the session; repeated uploads refresh the map even when the mission ID is unchanged.
 - Only a valid CSV/SRT upload replaces telemetry; rejected uploads preserve it. Custom drones and uploaded mission registrations are also reset on restart.
 - `task3_data/` and `task4_data/` are optional local datasets, excluded from Git. Real-data tests skip when their fixtures are absent. No imagery is bundled in a source checkout.
-- Map basemaps need an internet connection. Leaflet styles are bundled locally; light/dark maps use CARTO and satellite/topographic maps use Esri. Changing styles keeps mission overlays and the current view. Run this application on loopback as configured; it has no user authentication.
+- Map basemaps need an internet connection. Leaflet styles are bundled locally; dark maps use Stadia Maps, light maps OpenStreetMap, satellite maps Esri and topographic maps OpenTopoMap. Changing styles keeps mission overlays and the current view. Run this application on loopback as configured; it has no user authentication.
 - Image missions and Task 4 references are validated before replacing existing files. An invalid replacement preserves the previous upload.
 - `build/`, `dist/`, `release/`, `node_modules/`, credentials and local planning documents are excluded by `.gitignore`. Keep the `.spec`, lockfile, source, tests, and sample CSVs in Git. Distribute executables separately as GitHub Release assets.
 - The SEKI image dataset is spatially split into separate capture groups. A grouped preview is the correct expected visualization.
