@@ -45,10 +45,13 @@ test('all map styles switch without destroying the map or overlays', () => {
   expect(state.maps).toHaveLength(1);
   expect(map.remove).not.toHaveBeenCalled();
   expect(state.tiles).toHaveLength(5);
-  for (const tile of state.tiles) {
-    expect(tile.options.attribution).toBeTruthy();
-    expect(tile.url).not.toMatch(/stadiamaps|opentopomap/);
-  }
+  // Initial dark, then light, satellite, terrain, dark again.
+  const expectedHosts = ['stadiamaps.com', 'openstreetmap.org', 'arcgisonline.com', 'opentopomap.org', 'stadiamaps.com'];
+  state.tiles.forEach((tile, index) => {
+    expect(tile.options.attribution).toBeTruthy();   // every provider requires attribution
+    expect(tile.url).toMatch(/^https:\/\//);          // no mixed content / plain http
+    expect(tile.url).toContain(expectedHosts[index]);
+  });
   expect(map.removeLayer).toHaveBeenCalledTimes(4);
 });
 
